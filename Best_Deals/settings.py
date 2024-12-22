@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-a4(x^&4^kh(tn#@6&)yb-b%eoy##d2rh@5o4-p3dcblzq=p1w_
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 # 允许所有跨域请求
 CORS_ALLOW_ALL_ORIGINS = True
@@ -52,9 +52,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # 添加1，注意中间件的添加顺序
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',    # 添加1，注意中间件的添加顺序
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
