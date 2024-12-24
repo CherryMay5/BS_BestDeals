@@ -1,9 +1,7 @@
+from django.utils import timezone
 from django.db import models
 
 # Create your models here.
-
-# class Products(models.Model):
-
 
 class Platform(models.Model):
 	# 如果没有指定主键的话Django会自动新增一个自增id作为主键
@@ -19,3 +17,27 @@ class Platform(models.Model):
 
 	class Meta:
 		db_table = 'platform'
+
+
+class Products(models.Model):
+	platform_belong = models.CharField(max_length=255, verbose_name='所属电商平台')
+	page = models.IntegerField(verbose_name='页码')
+	num = models.IntegerField(verbose_name='序号')
+	title = models.CharField(max_length=255,verbose_name='商品标题')
+	price = models.FloatField(verbose_name='商品价格')
+	deal = models.IntegerField(verbose_name='成交销量')
+	location = models.CharField(max_length=255,verbose_name='地理位置')
+	shop = models.CharField(max_length=255,verbose_name='店铺名称')
+	is_post_free = models.CharField(max_length=255,verbose_name='是否包邮')
+	title_url = models.URLField(verbose_name='商品详情页链接')
+	shop_url = models.URLField(verbose_name='商铺链接')
+	img_url = models.URLField(verbose_name='图片链接')
+	time_catch = models.DateTimeField(default=timezone.now)
+
+	def __str__(self):
+		return self.title
+
+	class Meta:
+		db_table = 'products'
+
+
