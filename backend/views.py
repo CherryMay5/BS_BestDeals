@@ -1,4 +1,6 @@
 from sqlite3 import IntegrityError
+from sys import platform
+
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -62,6 +64,7 @@ def search_products(request):
     try:
         # 获取关键词和分页参数
         keyword = request.GET.get('keyword').strip()
+        platforms = request.GET.get('platforms').strip()
 
         # 调用爬虫
         crawler(keyword)
@@ -69,6 +72,9 @@ def search_products(request):
         # 如果没有关键词，返回数据库中所有商品；有关键词时，按标题模糊查询
         if keyword:
             products = Products.objects.filter(title__icontains=keyword)
+
+            if platforms:
+                products = products.filter(platform__icontains=platforms)
         else:
             products = Products.objects.all()
 

@@ -25,13 +25,14 @@ class Products(models.Model):
 	num = models.IntegerField(verbose_name='序号')
 	title = models.CharField(max_length=255,verbose_name='商品标题')
 	price = models.FloatField(verbose_name='商品价格')
-	deal = models.IntegerField(verbose_name='成交销量')
+	deal = models.CharField(verbose_name='成交销量')
 	location = models.CharField(max_length=255,verbose_name='地理位置')
 	shop = models.CharField(max_length=255,verbose_name='店铺名称')
 	is_post_free = models.CharField(max_length=255,verbose_name='是否包邮')
 	title_url = models.URLField(verbose_name='商品详情页链接')
 	shop_url = models.URLField(verbose_name='商铺链接')
 	img_url = models.URLField(verbose_name='图片链接')
+	style = models.TextField(verbose_name='风格')
 	time_catch = models.DateTimeField(default=timezone.now)
 
 	def __str__(self):

@@ -130,9 +130,11 @@ def get_goods(page):
                 s_span = s('div.descBox--RunOO4S3 > span').text()
                 if s_span != '':
                     style.append(s_span)
+            style_str = '，'.join(style)
 
             # 构建商品信息字典
             product_data = {
+                'platform':'淘宝',
                 'Page': page,
                 'Num': count - 1,
                 'title': title,
@@ -143,13 +145,14 @@ def get_goods(page):
                 'isPostFree': postText,
                 'url': t_url,
                 'shop_url': shop_url,
-                'img_url': img_url
+                'img_url': img_url,
+                'style': style_str,
             }
             print(product_data)
 
             # 商品数据写入数据库
             product = Products(
-                platform_belong='淘宝',
+                platform_belong=product_data['platform'],
                 page=product_data['Page'],
                 num=product_data['Num'],
                 title=product_data['title'],
@@ -161,6 +164,7 @@ def get_goods(page):
                 title_url=product_data['url'],
                 shop_url=product_data['shop_url'],
                 img_url=product_data['img_url'],
+                style=product_data['style'],
                 time_catch=timezone.now()  # 获取当前时间
             )
             product.save()
@@ -179,15 +183,17 @@ def turn_pageStart(pageStart):
         time.sleep(3)
         # 找到输入“页面”的表单，输入“起始页”
         pageInput = wait.until(EC.presence_of_element_located(
-                    (By.CSS_SELECTOR,
-                 '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > span.next-input.next-medium.next-pagination-jump-input'))
-        )
+            (By.XPATH,'//*[@id="search-content-leftWrap"]/div[2]/div[4]/div/div/span[3]')))
+        #             (By.CSS_SELECTOR,
+        #          '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > span.next-input.next-medium.next-pagination-jump-input'))
+        # )
         pageInput.send_keys(pageStart)
         # 找到页面跳转的“确定”按钮，并且点击
         ensure_btn = wait.until(EC.element_to_be_clickable(
-                    (By.CSS_SELECTOR,
-                     '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > button.next-btn.next-medium.next-btn-normal.next-pagination-jump-go'))
-        )
+            (By.XPATH,'//*[@id="search-content-leftWrap"]/div[2]/div[4]/div/div/button[3]')))
+        #             (By.CSS_SELECTOR,
+        #              '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > button.next-btn.next-medium.next-btn-normal.next-pagination-jump-go'))
+        # )
         ensure_btn.click()
         print("已翻至:第{}页".format(pageStart))
     except Exception as e:
@@ -203,12 +209,17 @@ def page_turning(page_number):
         # 强制等待2秒后翻页
         time.sleep(2)
         # 找到“下一页”的按钮
-        submit = wait.until(EC.element_to_be_clickable(
-            (By.CSS_SELECTOR, '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > button.next-btn.next-medium.next-btn-normal.next-pagination-item.next-next')))
-        submit.click()
+        # submit = wait.until(EC.element_to_be_clickable(
+        #     (By.CSS_SELECTOR, '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > button.next-btn.next-medium.next-btn-normal.next-pagination-item.next-next')))
+        # submit.click()
+        next_button = wait.until(EC.element_to_be_clickable(
+            (By.XPATH, '//*[@id="search-content-leftWrap"]/div[2]/div[4]/div/div/button[2]')))
+
+        next_button.click()
         # 判断页数是否相等
         wait.until(EC.text_to_be_present_in_element(
-            (By.CSS_SELECTOR, '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > span.next-pagination-display'), str(page_number)))
+            (By.XPATH,'//*[@id="search-content-leftWrap"]/div[2]/div[4]/div/div/span[1]'), str(page_number)))
+            # (By.CSS_SELECTOR, '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > span.next-pagination-display'), str(page_number)))
         print("已翻至: 第{}页".format(page_number))
     except Exception as e:
         print("page_turning函数错误！")
@@ -237,6 +248,7 @@ def crawler_tb(keyword):
 # if __name__ == '__main__':
 def crawler(keyword):
     try:
+        keyword="短袖"
         # 开始爬取数据
         crawler_tb(keyword)
         print("爬取成功！")
