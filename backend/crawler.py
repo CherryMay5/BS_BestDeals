@@ -21,49 +21,59 @@ django.setup()
 from backend.models import Products
 from django.utils import timezone
 
-
-# 浏览器配置对象
-options = webdriver.ChromeOptions() # 启动ChromeDriver服务
-# 禁用自动化栏：关闭自动测试状态显示 // 会导致浏览器报：请停用开发者模式
-options.add_experimental_option("excludeSwitches", ['enable-automation'])
-# 屏蔽保存密码提示框
-prefs = {'credentials_enable_service': False, 'profile.password_manager_enabled': False}
-options.add_experimental_option('prefs', prefs)
-# 反爬机制
-options.add_argument('--disable-blink-features=AutomationControlled')
-
-# 1.打开浏览器
-driver = webdriver.Chrome(options=options)
-# 窗口最大化
-driver.maximize_window()
-# 移除selenium当中爬虫的特征
-driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument",
-                       {"source": """Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"""})
-
-
-# 2.登陆淘宝
-login_url = 'https://login.taobao.com/member/login.jhtml?spm=a21bo.jianhua/a.action.dlogin.5af92a89pc6lGc&f=top&redirectURL=http%3A%2F%2Fwww.taobao.com%2F'
-driver.get(login_url)
 # wait是Selenium中的一个等待类，用于在特定条件满足之前等待一定的时间(这里是15秒)。
 # 如果一直到等待时间都没满足则会捕获TimeoutException异常
 # 打开页面后会强制停止10秒
-wait = WebDriverWait(driver, 10)
-account = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#fm-login-id')))
-account.send_keys('18858113974')
-password = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#fm-login-password')))
-password.send_keys('ZMJX2004abc!')
-# driver.find_element(by=By.CSS_SELECTOR,value='#fm-login-id').send_keys('18858113974')
-# driver.find_element(by=By.CSS_SELECTOR,value='#fm-login-password').send_keys('ZMJX2004abc!')
-driver.find_element(by=By.CSS_SELECTOR,value='#login-form > div.fm-btn > button').click()
-time.sleep(15)  # 过滑块
-
-
-# 3.获取商品信息
+wait = None
 # 全局变量
 count = 1  # 写入db商品计数
 
+def configure_browser():
+    # 浏览器配置对象
+    options = webdriver.ChromeOptions() # 启动ChromeDriver服务
+    # 禁用自动化栏：关闭自动测试状态显示 // 会导致浏览器报：请停用开发者模式
+    options.add_experimental_option("excludeSwitches", ['enable-automation'])
+    # 屏蔽保存密码提示框
+    prefs = {'credentials_enable_service': False, 'profile.password_manager_enabled': False}
+    options.add_experimental_option('prefs', prefs)
+    # 反爬机制
+    options.add_argument('--disable-blink-features=AutomationControlled')
+
+    # 1.打开浏览器
+    driver = webdriver.Chrome(options=options)
+    # 窗口最大化
+    driver.maximize_window()
+    # 移除selenium当中爬虫的特征
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument",
+                       {"source": """Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"""})
+    global wait
+    wait = WebDriverWait(driver, 10)
+    return driver
+
+def login_tb(driver):
+    try:
+        # 2.登陆淘宝
+        login_url = 'https://www.taobao.com'
+        driver.get(login_url)
+
+        print("开始登录淘宝...")
+        # account = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#fm-login-id')))
+        # account.send_keys(username)
+        # password_in = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#fm-login-password')))
+        # password_in.send_keys(password)
+        # driver.find_element(by=By.CSS_SELECTOR,value='#login-form > div.fm-btn > button').click()
+        input("请输入您的账号密码登录淘宝……完成后点击“ENTER”键")
+
+        # time.sleep(30)  # 过滑块
+        print("登陆成功！")
+    except Exception as e:
+        print("登录淘宝时出错：",e)
+        driver.quit()
+        raise
+
+# 3.获取商品信息
 # 输入“关键词”，搜索
-def search_goods(keyword):
+def search_goods(driver,keyword):
     try:
         print("正在搜索: {}".format(keyword))
         # 找到搜索“输入框”
@@ -79,11 +89,11 @@ def search_goods(keyword):
         time.sleep(2)
         print("搜索完成！")
     except Exception as e:
-        print("search_goods函数错误！")
-        print(e)
+        print("search_goods函数错误！搜索商品时出错：", e)
+        raise
 
 # 获取商品信息
-def get_goods(page):
+def get_goods(driver,page):
     try:
         # 设置计数全局变量
         global count
@@ -120,9 +130,15 @@ def get_goods(page):
             # 定位店名url
             shop_url = item.find('.TextAndPic--grkZAtsC a')
             shop_url = shop_url.attr('href')
+            if not shop_url:
+                shop_url = "https://www.taobao.com"
             # 定位商品图片url
             img = item.find('.mainPicAdaptWrapper--V_ayd2hD img')
             img_url = img.attr('src')
+            # 如果图片 URL 为空，则设置默认图片 URL
+            if not img_url:
+                img_url = 'https://example.com/default_image.jpg'
+
             # 定位风格
             style_list = item('div.abstractWrapper--whLX5va5 > div').items()
             style = []
@@ -134,7 +150,6 @@ def get_goods(page):
 
             # 构建商品信息字典
             product_data = {
-                'platform':'淘宝',
                 'Page': page,
                 'Num': count - 1,
                 'title': title,
@@ -147,12 +162,12 @@ def get_goods(page):
                 'shop_url': shop_url,
                 'img_url': img_url,
                 'style': style_str,
+                'platform':'淘宝',
             }
             print(product_data)
 
             # 商品数据写入数据库
             product = Products(
-                platform_belong=product_data['platform'],
                 page=product_data['Page'],
                 num=product_data['Num'],
                 title=product_data['title'],
@@ -165,16 +180,17 @@ def get_goods(page):
                 shop_url=product_data['shop_url'],
                 img_url=product_data['img_url'],
                 style=product_data['style'],
-                time_catch=timezone.now()  # 获取当前时间
+                time_catch=timezone.now(),  # 获取当前时间
+                platform_belong=product_data['platform'],
             )
             product.save()
             count += 1  # 下一行
     except Exception as e:
-        print("get_goods函数错误！")
-        print(e)
+        print("get_goods函数错误！获取商品信息时出错：",e)
+        raise
 
 # 翻页至第pageStart页
-def turn_pageStart(pageStart):
+def turn_pageStart(driver,pageStart):
     try:
         print("正在翻转:第{}页".format(pageStart))
         # 滑动到页面底端
@@ -197,11 +213,11 @@ def turn_pageStart(pageStart):
         ensure_btn.click()
         print("已翻至:第{}页".format(pageStart))
     except Exception as e:
-        print("turn_pageStart函数错误！")
-        print(e)
+        print("turn_pageStart函数错误！: ",e)
+        raise
 
 # 翻页函数
-def page_turning(page_number):
+def page_turning(driver,page_number):
     try:
         print("正在翻页: 第{}页".format(page_number))
         # 滑动到底部以确保所有数据加载完成
@@ -222,35 +238,47 @@ def page_turning(page_number):
             # (By.CSS_SELECTOR, '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > span.next-pagination-display'), str(page_number)))
         print("已翻至: 第{}页".format(page_number))
     except Exception as e:
-        print("page_turning函数错误！")
-        print(e)
+        print("page_turning函数错误！: ",e)
+        raise
 
 # 爬虫main函数
-def crawler_tb(keyword):
-    pageStart=1
-    pageEnd=10
+def crawler_tb(driver,keyword,pageStart,pageEnd):
     try:
         # 搜索KEYWORD
-        search_goods(keyword)
+        search_goods(driver, keyword)
         # 判断pageStart是否为第1页
         if pageStart != 1:
-            turn_pageStart(pageStart)
+            turn_pageStart(driver,pageStart)
         # 爬取PageStart的商品信息
-        get_goods(1)
+        get_goods(driver,pageStart)
         # 从PageStart+1爬取到PageEnd
         for i in range(pageStart + 1, pageEnd + 1):
-            page_turning(i)
-            get_goods(i)
+            page_turning(driver,i)
+            get_goods(driver,i)
     except Exception as e:
-        print("Crawler_tb函数错误！")
-        print(e)
+        print("Crawler_tb函数错误！: ",e)
+        raise
+
+# 包装爬虫
+def run_crawler(keyword, page_start=1, page_end=10):
+    driver = configure_browser()
+    try:
+        login_tb(driver)
+        crawler_tb(driver, keyword, page_start, page_end)
+        print("爬取完成！")
+    except Exception as e:
+        print("运行爬虫时出错：", e)
+    finally:
+        driver.quit()
 
 # if __name__ == '__main__':
 def crawler(keyword):
     try:
-        keyword="短袖"
+        # username = "18858113974"  # 替换为你的淘宝账号
+        # password = "ZMJX2004abc!"  # 替换为你的淘宝密码
+        keyword = "短袖"  # 替换为需要搜索的关键词
         # 开始爬取数据
-        crawler_tb(keyword)
+        run_crawler(keyword)
         print("爬取成功！")
     except Exception as e:
         print(e)

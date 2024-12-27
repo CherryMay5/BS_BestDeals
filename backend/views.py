@@ -59,30 +59,66 @@ def login(request):
     except Exception as e:
         return JsonResponse({'error': '服务器内部错误'}, status=500)
 
-@csrf_exempt
-def search_products(request):
-    try:
-        # 获取关键词和分页参数
-        keyword = request.GET.get('keyword').strip()
-        platforms = request.GET.get('platforms').strip()
 
-        # 调用爬虫
-        crawler(keyword)
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .models import Products
+from rest_framework.pagination import PageNumberPagination
+from rest_framework import status
 
-        # 如果没有关键词，返回数据库中所有商品；有关键词时，按标题模糊查询
-        if keyword:
-            products = Products.objects.filter(title__icontains=keyword)
+# 商品分页类
+class ProductSearchPagination(PageNumberPagination):
+    page_size = 40  # 每页40个商品
+    page_size_query_param = 'page_size'
+    max_page_size = 100 # 最大页数设置
 
-            if platforms:
-                products = products.filter(platform__icontains=platforms)
-        else:
-            products = Products.objects.all()
+# 商品展示接口
+class ProductSearchView(APIView):
+    def post(self, request):
+# @csrf_exempt
+# def search_products(request):
+        try:
+            search_input = request.data.get('keyword', '')
+            platforms = request.data.get('platforms', [])
 
-        return JsonResponse({
-            "success": True,
-            "message": "搜索成功",
-            "data": products
-        }, status=200)
+            # 调用爬虫
+            # crawler(search_input)
 
-    except Exception as e:
-        return JsonResponse({"success": False,"error": str(e) }, status=500)
+            # 如果没有关键词，返回数据库中所有商品；有关键词时，按标题模糊查询
+            if search_input:
+                products = Products.objects.filter(title__icontains=search_input)
+                # 根据平台过滤
+                if platforms:
+                    products = products.filter(platform__icontains=platforms)
+            else:
+                products = Products.objects.all()
+                # 调用爬虫
+                # crawler(search_input)
+
+            paginator = ProductSearchPagination()
+            result_page = paginator.paginate_queryset(products, request)
+
+            product_data = [{
+                'id': product.id,
+                'title': product.title,
+                'price': product.price,
+                'deal': product.deal,
+                'location': product.location,
+                'shop': product.shop,
+                'is_post_free': product.is_post_free,
+                'title_url': product.title_url,
+                'shop_url': product.shop_url,
+                'img_url': product.img_url,
+                'style': product.style,
+                'platform_belong': product.platform_belong,
+            } for product in result_page]
+
+            print(product_data)
+            return paginator.get_paginated_response(product_data)
+            # return JsonResponse({
+            #     "success": True,
+            #     "message": "搜索成功",
+            #     "data": products
+            # }, status=200)
+        except Exception as e:
+            return JsonResponse({"success": False,"error": str(e) }, status=500)
