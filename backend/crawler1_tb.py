@@ -38,6 +38,8 @@ def configure_browser():
     options.add_experimental_option('prefs', prefs)
     # 反爬机制
     options.add_argument('--disable-blink-features=AutomationControlled')
+    # options.add_argument(
+    #     'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36')
 
     # 1.打开浏览器
     driver = webdriver.Chrome(options=options)
@@ -47,7 +49,7 @@ def configure_browser():
     driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument",
                        {"source": """Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"""})
     global wait
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 15)
     return driver
 
 def login_tb(driver):
@@ -62,10 +64,10 @@ def login_tb(driver):
         # password_in = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#fm-login-password')))
         # password_in.send_keys(password)
         # driver.find_element(by=By.CSS_SELECTOR,value='#login-form > div.fm-btn > button').click()
-        input("请输入您的账号密码登录淘宝……完成后点击“ENTER”键")
+        input("请输入您的账号密码或扫描二维码登录淘宝……完成后点击“ENTER”键")
 
         # time.sleep(30)  # 过滑块
-        print("登陆成功！")
+        print("登录淘宝成功！")
     except Exception as e:
         print("登录淘宝时出错：",e)
         driver.quit()
@@ -95,6 +97,20 @@ def search_goods(driver,keyword):
 # 获取商品信息
 def get_goods(driver,page):
     try:
+        # 滑动加载
+        last_height = driver.execute_script("return document.body.scrollHeight")
+        while True:
+            driver.execute_script("window.scrollBy(0, 1000);")
+            time.sleep(2)
+            new_height = driver.execute_script("return document.body.scrollHeight")
+            if new_height == last_height:
+                break
+            last_height = new_height
+
+        # 动态等待所有图片加载完成
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "img[src]"))
+        )
         # 设置计数全局变量
         global count
         # items = driver.find_element(by=By.CSS_SELECTOR,value='#content_items_wrapper')
@@ -220,23 +236,26 @@ def turn_pageStart(driver,pageStart):
 def page_turning(driver,page_number):
     try:
         print("正在翻页: 第{}页".format(page_number))
+        print("wait:",wait)
         # 滑动到底部以确保所有数据加载完成
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        # 强制等待2秒后翻页
-        time.sleep(2)
+        # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        # 强制等待3秒后翻页
+        time.sleep(3)
         # 找到“下一页”的按钮
         # submit = wait.until(EC.element_to_be_clickable(
         #     (By.CSS_SELECTOR, '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > button.next-btn.next-medium.next-btn-normal.next-pagination-item.next-next')))
         # submit.click()
         next_button = wait.until(EC.element_to_be_clickable(
-            (By.XPATH, '//*[@id="search-content-leftWrap"]/div[2]/div[4]/div/div/button[2]')))
-
-        next_button.click()
+            (By.XPATH, '//*[@id="search-content-leftWrap"]/div[3]/div[4]/div/div/button[2]')))
+        next_button.click() #//*[@id="search-content-leftWrap"]/div[2]/div[4]/div/div/button[2]
         # 判断页数是否相等
         wait.until(EC.text_to_be_present_in_element(
-            (By.XPATH,'//*[@id="search-content-leftWrap"]/div[2]/div[4]/div/div/span[1]'), str(page_number)))
+            (By.XPATH,'//*[@id="search-content-leftWrap"]/div[3]/div[4]/div/div/span[1]/em'), str(page_number)))
             # (By.CSS_SELECTOR, '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > span.next-pagination-display'), str(page_number)))
         print("已翻至: 第{}页".format(page_number))
+    except TimeoutException:
+        print(f"页面加载超时，第{page_number}页未能正确加载。")
+        page_turning(driver,page_number)
     except Exception as e:
         print("page_turning函数错误！: ",e)
         raise
@@ -259,26 +278,21 @@ def crawler_tb(driver,keyword,pageStart,pageEnd):
         print("Crawler_tb函数错误！: ",e)
         raise
 
-# 包装爬虫
-def run_crawler(keyword, page_start=1, page_end=10):
-    driver = configure_browser()
-    try:
-        login_tb(driver)
-        crawler_tb(driver, keyword, page_start, page_end)
-        print("爬取完成！")
-    except Exception as e:
-        print("运行爬虫时出错：", e)
-    finally:
-        driver.quit()
 
 # if __name__ == '__main__':
-def crawler(keyword):
+def crawler1(keyword):
+    driver = configure_browser()
     try:
-        # username = "18858113974"  # 替换为你的淘宝账号
-        # password = "ZMJX2004abc!"  # 替换为你的淘宝密码
-        keyword = "短袖"  # 替换为需要搜索的关键词
+        # username = ""  # 替换为你的淘宝账号
+        # password = ""  # 替换为你的淘宝密码
+        # keyword = "毛绒玩具"  # 替换为需要搜索的关键词
+        page_start=1
+        page_end=5
         # 开始爬取数据
-        run_crawler(keyword)
+        login_tb(driver)
+        crawler_tb(driver, keyword, page_start, page_end)
         print("爬取成功！")
     except Exception as e:
         print(e)
+    finally:
+        driver.quit()

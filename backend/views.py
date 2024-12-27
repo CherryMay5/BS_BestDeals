@@ -8,7 +8,8 @@ from django.contrib.auth import authenticate
 import json
 
 from backend.models import Products
-from backend.crawler import crawler
+from backend.crawler1_tb import crawler1
+
 
 @csrf_exempt
 def register(request):
@@ -72,53 +73,29 @@ class ProductSearchPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100 # 最大页数设置
 
-# 商品展示接口
-class ProductSearchView(APIView):
-    def post(self, request):
-# @csrf_exempt
-# def search_products(request):
+@csrf_exempt
+def search_products(request):
         try:
-            search_input = request.data.get('keyword', '')
-            platforms = request.data.get('platforms', [])
+            search_input = request.GET.get('keyword', '')
+            platforms = request.GET.getlist('platforms', [])
 
-            # 调用爬虫
-            # crawler(search_input)
+            # 初始化查询集
+            products = Products.objects.all()
 
-            # 如果没有关键词，返回数据库中所有商品；有关键词时，按标题模糊查询
             if search_input:
-                products = Products.objects.filter(title__icontains=search_input)
+                products = products.filter(title__icontains=search_input)
                 # 根据平台过滤
                 if platforms:
-                    products = products.filter(platform__icontains=platforms)
+                    products = products.filter(platform_belong__in=platforms)
             else:
-                products = Products.objects.all()
+                # 如果没有关键词，返回数据库中所有商品；有关键词时，按标题模糊查询
                 # 调用爬虫
-                # crawler(search_input)
+                crawler1(search_input)
 
-            paginator = ProductSearchPagination()
-            result_page = paginator.paginate_queryset(products, request)
+            print(products)
 
-            product_data = [{
-                'id': product.id,
-                'title': product.title,
-                'price': product.price,
-                'deal': product.deal,
-                'location': product.location,
-                'shop': product.shop,
-                'is_post_free': product.is_post_free,
-                'title_url': product.title_url,
-                'shop_url': product.shop_url,
-                'img_url': product.img_url,
-                'style': product.style,
-                'platform_belong': product.platform_belong,
-            } for product in result_page]
-
-            print(product_data)
-            return paginator.get_paginated_response(product_data)
-            # return JsonResponse({
-            #     "success": True,
-            #     "message": "搜索成功",
-            #     "data": products
-            # }, status=200)
+            # 转换为 JSON 格式返回
+            data = list(products.values())
+            return JsonResponse(data, safe=False)
         except Exception as e:
             return JsonResponse({"success": False,"error": str(e) }, status=500)
