@@ -293,7 +293,7 @@ def crawler2(keyword):
     try:
         # username = ""  # 替换为你的淘宝账号
         # password = ""  # 替换为你的淘宝密码
-        keyword = "电视机"  # 替换为需要搜索的关键词
+        # keyword = "电视机"  # 替换为需要搜索的关键词
         page_start=1
         page_end=5
         # 开始爬取数据

@@ -8,7 +8,8 @@ from django.contrib.auth import authenticate
 import json
 
 from backend.models import Products
-from backend.crawler1_tb import crawler1
+from .crawler1_tb import crawler1
+from .crawler2_sn import crawler2
 
 
 @csrf_exempt
@@ -52,7 +53,7 @@ def login(request):
 
         user = authenticate(username=username, password=password)
         if user is not None:
-            return JsonResponse({'message': '登录成功', 'username': user.username, 'email': user.email}, status=200)
+            return JsonResponse({'message': '登录成功', 'username': user.username, 'email': user.email, 'user_id': user.id}, status=200)
         else:
             return JsonResponse({'error': '用户名或密码错误'}, status=400)
     except json.JSONDecodeError:
@@ -91,6 +92,7 @@ def search_products(request):
                 # 如果没有关键词，返回数据库中所有商品；有关键词时，按标题模糊查询
                 # 调用爬虫
                 crawler1(search_input)
+                crawler2(search_input)
 
             print(products)
 
@@ -99,3 +101,40 @@ def search_products(request):
             return JsonResponse(data, safe=False)
         except Exception as e:
             return JsonResponse({"success": False,"error": str(e) }, status=500)
+
+
+from django.shortcuts import get_object_or_404
+@csrf_exempt
+def get_product_details(request):
+    # 从请求中获取商品的 ID
+    product_id = request.GET.get('product_id')
+    print(product_id)
+
+    if not product_id:
+        return JsonResponse({'error': '缺少商品ID参数'}, status=400)
+
+    try:
+        # 查询商品
+        product = get_object_or_404(Products, id=product_id)
+
+        # 将商品信息转换为字典格式
+        product_data = {
+            'id': product.id,
+            'title': product.title,
+            'price': product.price,
+            'deal': product.deal,
+            'location': product.location,
+            'shop': product.shop,
+            'is_post_free': product.is_post_free,
+            'title_url': product.title_url,
+            'shop_url': product.shop_url,
+            'img_url': product.img_url,
+            'style': product.style,
+            'time_catch': product.time_catch,
+            'platform_belong': product.platform_belong,
+        }
+
+        return JsonResponse(product_data, status=200)
+
+    except Exception as e:
+        return JsonResponse({'error': '无法获取商品详情', 'details': str(e)}, status=500)

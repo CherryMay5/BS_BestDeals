@@ -99,13 +99,16 @@ def get_goods(driver,page):
     try:
         # 滑动加载
         last_height = driver.execute_script("return document.body.scrollHeight")
+        # print(last_height)
         while True:
             driver.execute_script("window.scrollBy(0, 1000);")
             time.sleep(2)
             new_height = driver.execute_script("return document.body.scrollHeight")
+            # print("new_height: ", new_height)
             if new_height == last_height:
                 break
             last_height = new_height
+            # print(last_height)
 
         # 动态等待所有图片加载完成
         WebDriverWait(driver, 15).until(
@@ -285,7 +288,7 @@ def crawler1(keyword):
     try:
         # username = ""  # 替换为你的淘宝账号
         # password = ""  # 替换为你的淘宝密码
-        # keyword = "毛绒玩具"  # 替换为需要搜索的关键词
+        # keyword = "短袖"  # 替换为需要搜索的关键词
         page_start=1
         page_end=5
         # 开始爬取数据
