@@ -166,7 +166,7 @@ def get_goods(driver,page):
                 img_url = 'https://example.com/default_image.jpg'
 
             # 定位风格
-            style_str = item.find('.info-config').text()
+            style_str = item.find('.info-config em').text()
             # style = []
             # for s in style_list:
             #     s_span = s('div.descBox--RunOO4S3 > span').text()
@@ -206,7 +206,8 @@ def get_goods(driver,page):
                 shop_url=product_data['shop_url'],
                 img_url=product_data['img_url'],
                 style=product_data['style'],
-                time_catch=timezone.now(),  # 获取当前时间
+                created_at=timezone.now(),  # 获取当前时间
+                updated_at=timezone.now(),
                 platform_belong=product_data['platform'],
             )
             product.save()
@@ -252,9 +253,13 @@ def page_turning(driver,page_number):
         # 强制等待3秒后翻页
         time.sleep(3)
         # 找到“下一页”的按钮
-        next_button = wait.until(EC.element_to_be_clickable(
-            (By.XPATH, '//*[@id="nextPage"]')))
-        next_button.click()
+        # next_button = wait.until(EC.element_to_be_clickable(
+        #     (By.XPATH, '//*[@id="nextPage"]')))
+        # next_button.click()
+        next_page = driver.find_element(By.ID, "nextPage")
+        driver.execute_script("arguments[0].scrollIntoView(true);", next_page)
+        next_page.click()
+
         # 判断页数是否相等
         wait.until(EC.text_to_be_present_in_element(
             (By.CSS_SELECTOR,'#second-filter > div > div.sort > span.cur'), str(page_number)))
@@ -262,6 +267,8 @@ def page_turning(driver,page_number):
         print("已翻至: 第{}页".format(page_number))
     except TimeoutException:
         print(f"页面加载超时，第{page_number}页未能正确加载。")
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
         get_goods(driver,page_number)
         page_turning(driver,page_number)
     except Exception as e:
@@ -293,7 +300,7 @@ def crawler2(keyword):
     try:
         # username = ""  # 替换为你的淘宝账号
         # password = ""  # 替换为你的淘宝密码
-        # keyword = "电视机"  # 替换为需要搜索的关键词
+        keyword = "空调"  # 替换为需要搜索的关键词
         page_start=1
         page_end=5
         # 开始爬取数据

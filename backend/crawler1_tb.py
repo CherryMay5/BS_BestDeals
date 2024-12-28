@@ -97,18 +97,12 @@ def search_goods(driver,keyword):
 # 获取商品信息
 def get_goods(driver,page):
     try:
-        # 滑动加载
-        last_height = driver.execute_script("return document.body.scrollHeight")
-        # print(last_height)
-        while True:
-            driver.execute_script("window.scrollBy(0, 1000);")
+        # 滑动加载，模拟人工
+        i = 0
+        while i < 4:
+            driver.execute_script("window.scrollBy(0, 900);")
             time.sleep(2)
-            new_height = driver.execute_script("return document.body.scrollHeight")
-            # print("new_height: ", new_height)
-            if new_height == last_height:
-                break
-            last_height = new_height
-            # print(last_height)
+            i += 1
 
         # 动态等待所有图片加载完成
         WebDriverWait(driver, 15).until(
@@ -199,7 +193,8 @@ def get_goods(driver,page):
                 shop_url=product_data['shop_url'],
                 img_url=product_data['img_url'],
                 style=product_data['style'],
-                time_catch=timezone.now(),  # 获取当前时间
+                created_at=timezone.now(),  # 获取当前时间
+                updated_at=timezone.now(),
                 platform_belong=product_data['platform'],
             )
             product.save()
@@ -213,7 +208,7 @@ def turn_pageStart(driver,pageStart):
     try:
         print("正在翻转:第{}页".format(pageStart))
         # 滑动到页面底端
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         # 滑动到底部后停留3s
         time.sleep(3)
         # 找到输入“页面”的表单，输入“起始页”
