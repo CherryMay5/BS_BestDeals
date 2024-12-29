@@ -8,6 +8,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate
 import json
 
+from openpyxl.compat.product import product
+
 from backend.models import Products, ProductFavorite, PriceHistory
 from .crawler1_tb import crawler1
 from .crawler2_sn import crawler2
@@ -409,23 +411,26 @@ def get_price_history(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
-def send_price_email(request):
+def send_price_email(user_id,product_id):
     try:
-        # user_id = request.GET.get('user_id')
+        product = get_object_or_404(Products, id=product_id)
+        product_title = product.title
 
-        origin_email = request.GET.get('origin_email')
+        user = get_object_or_404(User, id=user_id)
+        des_email = user.email
 
-        content = '你关注的商品降价啦！快来看看吧~'
+        content = f'你关注的商品“{product_title}”降价啦！快来看看吧~'
         res = send_mail('降价提醒！',
                          content,
                          settings.DEFAULT_FROM_EMAIL,
-                         [origin_email])
+                         [des_email])
         data = {
             'send_content':content
         }
         if res == 1:
-            return JsonResponse(data, status=200)
+            return 1
         else:
-            return JsonResponse({'error':'邮件发送失败'}, status=500)
+            return 0
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        print("error：",str(e))
+        return 0
