@@ -2,7 +2,7 @@ from django.urls import path
 from .views import register, login
 from .views import search_products,get_product_details
 from .views import toggle_favorite,get_user_favorites
-from .views import get_user_info,send_verify_email,update_email
+from .views import get_user_info,update_username,send_password_verification_code,update_password,send_verify_email,update_email
 from .views import get_price_history
 from .crawler1_tb import crawler1
 from .crawler2_sn import crawler2
@@ -19,6 +19,9 @@ urlpatterns = [
     path('api/send_verify_email/', send_verify_email, name='send_verify_email'),
     path('api/update_email/', update_email, name='update_email'),
     path('api/get_price_history/', get_price_history, name='get_price_history'),
+    path('api/update_username/', update_username, name='update_username'),
+    path('api/update_password/', update_password, name='update_password'),
+    path('api/send_password_verification_code/', send_password_verification_code, name='send_password_verification_code'),
 ]
 
 

@@ -261,11 +261,85 @@ def get_user_info(request):
     except Exception as e:
         return JsonResponse({'error': '无法获取个人信息', 'details': str(e)}, status=500)
 
-
 import random
 
 def generate_verification_code():
     return f"{random.randint(100000, 999999)}"
+
+@csrf_exempt
+def send_password_verification_code(request):
+    try:
+        user_id = request.GET.get('user_id')
+        if not user_id:
+            return JsonResponse({'error': '未获取到用户ID'}, status=400)
+
+        des_email = User.objects.get(id=user_id).email
+        code = generate_verification_code()
+        content = f"您的验证码是： {code} "
+        res = send_mail('Best Deals 商品比价网站 —— 用户操作：修改密码',
+                        content,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [des_email])
+        data = {
+            'verify_code': code
+        }
+        if res == 1:
+            return JsonResponse(data, status=200)
+        else:
+            return JsonResponse({'error': '邮件发送失败'}, status=500)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def update_username(request):
+    try:
+        user_id = request.GET.get('user_id')
+        new_username = request.GET.get('new_username')
+
+        if not user_id:
+            return JsonResponse({"error": "用户ID未提供"}, status=400)
+        if not new_username:
+            return JsonResponse({'error': '用户名不能为空'}, status=400)
+        if User.objects.filter(username=new_username).exists():
+            return JsonResponse({'error': '用户名已存在,请重新输入'}, status=400)
+
+        # 确保用户存在
+        user = get_object_or_404(User, id=user_id)
+        # 更新用户名
+        user.username = new_username
+        user.save()
+
+        return JsonResponse({"message": "用户名更新成功", "new_username": new_username}, status=200)
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+def update_password(request):
+    try:
+        user_id = request.GET.get('user_id')
+        new_password = request.GET.get('new_password')
+
+        if not user_id:
+            return JsonResponse({"error": "用户ID未提供"}, status=400)
+        if not new_password:
+            return JsonResponse({'error': '不能为空'}, status=400)
+
+        # 检查密码长度
+        if len(new_password) < 6:
+            return JsonResponse({'error': '密码长度不能少于六位'}, status=400)
+
+        # 确保用户存在
+        user = get_object_or_404(User, id=user_id)
+        # 更新用户密码
+        user.set_password(new_password)
+        user.save()  # 放到数据库里
+
+        return JsonResponse({"message": "密码更新成功", "new_password": new_password}, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
 
 from django.core.mail import send_mail
 @csrf_exempt
