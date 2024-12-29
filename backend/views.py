@@ -1,13 +1,14 @@
 from sqlite3 import IntegrityError
 from sys import platform
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate
 import json
 
-from backend.models import Products, ProductFavorite
+from backend.models import Products, ProductFavorite, PriceHistory
 from .crawler1_tb import crawler1
 from .crawler2_sn import crawler2
 
@@ -68,11 +69,6 @@ from .models import Products
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import status
 
-# 商品分页类
-# class ProductSearchPagination(PageNumberPagination):
-#     page_size = 40  # 每页40个商品
-#     page_size_query_param = 'page_size'
-#     max_page_size = 100 # 最大页数设置
 
 @csrf_exempt
 def search_products(request):
@@ -90,9 +86,10 @@ def search_products(request):
                     products = products.filter(platform_belong__in=platforms)
             else:
                 # 如果没有关键词，返回数据库中所有商品；有关键词时，按标题模糊查询
-                # 调用爬虫
+                # 调用爬虫，重新search
                 crawler1(search_input)
                 crawler2(search_input)
+                search_products(search_input)
 
             print(products)
 
@@ -136,9 +133,10 @@ def get_product_details(request):
             'shop_url': product.shop_url,
             'img_url': product.img_url,
             'style': product.style,
-            'created_at': product.created_at,
-            'updated_at': product.updated_at,
+            'created_at': product.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'updated_at': product.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
             'platform_belong': product.platform_belong,
+            'category':product.category,
             'is_favorite': is_favorite,
         }
 
@@ -210,9 +208,10 @@ def get_user_favorites(request):
                 'shop_url': product.shop_url,
                 'img_url': product.img_url,
                 'style': product.style,
-                'created_at': product.created_at,
-                'updated_at': product.updated_at,
+                'created_at': product.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'updated_at': product.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'platform_belong': product.platform_belong,
+                'category':product.category,
             })
 
         print(product_data)
@@ -222,3 +221,117 @@ def get_user_favorites(request):
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
+@csrf_exempt
+def get_user_info(request):
+    try :
+        user_id = request.GET.get('user_id')
+        if not user_id:
+            return JsonResponse({"error": "用户ID未提供"}, status=400)
+
+        # 确保用户存在
+        user = get_object_or_404(User, id=user_id)
+
+        user_info = {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+        }
+
+        return JsonResponse(user_info, status=200)
+    except Exception as e:
+        return JsonResponse({'error': '无法获取个人信息', 'details': str(e)}, status=500)
+
+
+import random
+
+def generate_verification_code():
+    return f"{random.randint(100000, 999999)}"
+
+from django.core.mail import send_mail
+@csrf_exempt
+def send_verify_email(request):
+    try:
+        des_email = request.GET.get('des_email')
+        if not des_email:
+            return JsonResponse({'error': '邮箱地址不能为空'}, status=400)
+
+        code = generate_verification_code()
+        content = f"您的验证码是： {code}   修改后的邮箱为：{des_email}"
+        res = send_mail('Best Deals 商品比价网站 —— 用户操作：修改邮箱',
+                         content,
+                         settings.DEFAULT_FROM_EMAIL,
+                         [des_email])
+        data = {
+            'verify_code':code
+        }
+        if res == 1:
+            return JsonResponse(data, status=200)
+        else:
+            return JsonResponse({'error':'邮件发送失败'}, status=500)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def update_email(request):
+    try:
+        user_id = request.GET.get('user_id')
+        new_email = request.GET.get('new_email')
+
+        if not user_id:
+            return JsonResponse({"error": "用户ID未提供"}, status=400)
+        if not new_email:
+            return JsonResponse({'error': '邮箱地址不能为空'}, status=400)
+
+        # 确保用户存在
+        user = get_object_or_404(User, id=user_id)
+        # 更新用户邮箱
+        user.email = new_email
+        user.save()
+
+        return JsonResponse({"message": "邮箱更新成功", "new_email": new_email}, status=200)
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+def get_price_history(request):
+    try:
+        product_id = request.GET.get('product_id')
+        if not product_id:
+            return JsonResponse({'error':'未能成功传入product_id'}, status=400)
+
+        price_histories = PriceHistory.objects.filter(product_id=product_id).order_by('recorded_at')
+
+        data = [
+            {
+                'price':ph.price,
+                'recorded_at':ph.recorded_at.strftime('%Y.%m.%d')
+            }
+            for ph in price_histories
+        ]
+
+        return JsonResponse(data, safe=False)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+def send_priceDown_email(request):
+    try:
+        # user_id = request.GET.get('user_id')
+
+        origin_email = request.GET.get('origin_email')
+
+        content = '你关注的商品降价啦！快来看看吧~'
+        res = send_mail('降价提醒！',
+                         content,
+                         settings.DEFAULT_FROM_EMAIL,
+                         [origin_email])
+        data = {
+            'send_content':content
+        }
+        if res == 1:
+            return JsonResponse(data, status=200)
+        else:
+            return JsonResponse({'error':'邮件发送失败'}, status=500)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
