@@ -165,7 +165,7 @@ def get_goods(driver,page):
                 'img_url': img_url,
                 'style': style_str,
                 'platform':'苏宁易购',
-                'category':'数码',
+                'category':'其他',
             }
             print(product_data)
 
@@ -309,11 +309,11 @@ def crawler_sn(driver,keyword,pageStart,pageEnd):
         raise
 
 
-if __name__ == '__main__':
-# def crawler2(keyword):
+# if __name__ == '__main__':
+def crawler2(keyword):
     driver = configure_browser()
     try:
-        keyword = "羽绒服"  # 替换为需要搜索的关键词
+        # keyword = ""  # 替换为需要搜索的关键词
         page_start=2
         page_end=3
         # 开始爬取数据

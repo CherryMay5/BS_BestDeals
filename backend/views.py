@@ -74,21 +74,41 @@ from rest_framework import status
 def search_products(request):
         try:
             search_input = request.GET.get('keyword', '')
-            platforms = request.GET.getlist('platforms', [])
+            select_platform = request.GET.get('select_platform', '')
+            price_order = request.GET.get('price_order', '')
+            category_select = request.GET.get('category_select', '')
 
             # 初始化查询集
             products = Products.objects.all()
 
+            # 根据搜索内容查询：有关键词时，按标题模糊查询
             if search_input:
                 products = products.filter(title__icontains=search_input)
-                # 根据平台过滤
-                if platforms:
-                    products = products.filter(platform_belong__in=platforms)
-            else:
-                # 如果没有关键词，返回数据库中所有商品；有关键词时，按标题模糊查询
+
+            # 根据平台过滤
+            if select_platform:
+                products = products.filter(platform_belong=select_platform)
+
+            # 根据品类筛选
+            if category_select:
+                products = products.filter(category__icontains=category_select)
+
+            # 根据价格排序
+            if price_order == "asc" :
+                products = products.order_by("price") # 按价格升序
+            elif price_order == "desc" :
+                products = products.order_by("-price") # 按价格降序
+
+            if not products:
                 # 调用爬虫，重新search
-                crawler1(search_input)
-                crawler2(search_input)
+                if select_platform == "淘宝":
+                    crawler1(search_input)
+                elif select_platform == "苏宁易购" :
+                    crawler1(search_input)
+                else:
+                    crawler1(search_input)
+                    crawler1(search_input)
+                # 爬虫获取完数据后重新搜索
                 search_products(search_input)
 
             print(products)
