@@ -18,7 +18,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Best_Deals.settings')
 # 初始化 Django
 django.setup()
 # 然后导入模型
-from backend.models import Products
+from backend.models import Products,PriceHistory
 from django.utils import timezone
 
 # wait是Selenium中的一个等待类，用于在特定条件满足之前等待一定的时间(这里是15秒)。
@@ -108,6 +108,7 @@ def get_goods(driver,page):
         WebDriverWait(driver, 15).until(
             EC.presence_of_all_elements_located((By.CSS_SELECTOR, "img[src]"))
         )
+
         # 设置计数全局变量
         global count
         # items = driver.find_element(by=By.CSS_SELECTOR,value='#content_items_wrapper')
@@ -176,28 +177,62 @@ def get_goods(driver,page):
                 'img_url': img_url,
                 'style': style_str,
                 'platform':'淘宝',
+                'category':'鞋靴箱包',
             }
             print(product_data)
 
-            # 商品数据写入数据库
-            product = Products(
-                page=product_data['Page'],
-                num=product_data['Num'],
-                title=product_data['title'],
-                price=product_data['price'],
-                deal=product_data['deal'],
-                location=product_data['location'],
-                shop=product_data['shop'],
-                is_post_free=product_data['isPostFree'],
-                title_url=product_data['url'],
-                shop_url=product_data['shop_url'],
-                img_url=product_data['img_url'],
-                style=product_data['style'],
-                created_at=timezone.now(),  # 获取当前时间
-                updated_at=timezone.now(),
-                platform_belong=product_data['platform'],
-            )
-            product.save()
+            # 检查数据库中是否已经存在相同的商品
+            existing_product = Products.objects.filter(title=product_data['title']).first()
+
+            if existing_product:
+                # 更新已有商品信息
+                existing_product.price = product_data['price']
+                existing_product.deal = product_data['deal']
+                existing_product.location = product_data['location']
+                existing_product.shop = product_data['shop']
+                existing_product.is_post_free = product_data['isPostFree']
+                existing_product.title_url = product_data['url']
+                existing_product.shop_url = product_data['shop_url']
+                existing_product.img_url = product_data['img_url']
+                existing_product.style = product_data['style']
+                existing_product.updated_at=timezone.now()
+                existing_product.save()
+
+                # 添加价格记录
+                PriceHistory.objects.create(
+                    product=existing_product,
+                    price=product_data['price'],
+                    recorded_at=timezone.now()
+                )
+            else:
+                # 商品数据写入数据库
+                new_product = Products(
+                    page=product_data['Page'],
+                    num=product_data['Num'],
+                    title=product_data['title'],
+                    price=product_data['price'],
+                    deal=product_data['deal'],
+                    location=product_data['location'],
+                    shop=product_data['shop'],
+                    is_post_free=product_data['isPostFree'],
+                    title_url=product_data['url'],
+                    shop_url=product_data['shop_url'],
+                    img_url=product_data['img_url'],
+                    style=product_data['style'],
+                    created_at=timezone.now(),  # 获取当前时间
+                    updated_at=timezone.now(),
+                    platform_belong=product_data['platform'],
+                    category=product_data['category'],
+                )
+                new_product.save()
+
+                # 添加价格记录
+                PriceHistory.objects.create(
+                    product=new_product,
+                    price=price,
+                    recorded_at=timezone.now()
+                )
+
             count += 1  # 下一行
     except Exception as e:
         print("get_goods函数错误！获取商品信息时出错：",e)
@@ -207,20 +242,24 @@ def get_goods(driver,page):
 def turn_pageStart(driver,pageStart):
     try:
         print("正在翻转:第{}页".format(pageStart))
-        # 滑动到页面底端
-        # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        # 滑动到底部后停留3s
-        time.sleep(3)
+        # 滑动加载到页面底端，模拟人工
+        i = 0
+        while i < 4:
+            driver.execute_script("window.scrollBy(0, 900);")
+            time.sleep(2)
+            i += 1
+
+        time.sleep(3)# 滑动到底部后停留3s
         # 找到输入“页面”的表单，输入“起始页”
         pageInput = wait.until(EC.presence_of_element_located(
-            (By.XPATH,'//*[@id="search-content-leftWrap"]/div[2]/div[4]/div/div/span[3]')))
+            (By.XPATH,'//*[@id="search-content-leftWrap"]/div[3]/div[4]/div/div/span[3]/input')))
         #             (By.CSS_SELECTOR,
         #          '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > span.next-input.next-medium.next-pagination-jump-input'))
         # )
         pageInput.send_keys(pageStart)
         # 找到页面跳转的“确定”按钮，并且点击
         ensure_btn = wait.until(EC.element_to_be_clickable(
-            (By.XPATH,'//*[@id="search-content-leftWrap"]/div[2]/div[4]/div/div/button[3]')))
+            (By.XPATH,'//*[@id="search-content-leftWrap"]/div[3]/div[4]/div/div/button[3]')))
         #             (By.CSS_SELECTOR,
         #              '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > button.next-btn.next-medium.next-btn-normal.next-pagination-jump-go'))
         # )
@@ -283,9 +322,9 @@ def crawler1(keyword):
     try:
         # username = ""  # 替换为你的淘宝账号
         # password = ""  # 替换为你的淘宝密码
-        # keyword = "短袖"  # 替换为需要搜索的关键词
+        # keyword = "雪地靴"  # 替换为需要搜索的关键词
         page_start=1
-        page_end=5
+        page_end=4
         # 开始爬取数据
         login_tb(driver)
         crawler_tb(driver, keyword, page_start, page_end)

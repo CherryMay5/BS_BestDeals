@@ -22,6 +22,28 @@ class Platform(models.Model):
 		db_table = 'platform'
 
 
+# class MultiCategory(models.Model):
+# 	name = models.CharField(max_length=255, verbose_name='分类名称')
+# 	parent = models.ForeignKey(
+# 		'self',
+# 		on_delete=models.CASCADE,
+# 		related_name='subcategories',
+# 		null=True,
+# 		blank=True,
+# 		verbose_name='父级分类'
+# 	)
+	# created_at = models.DateTimeField(default=timezone.now)
+	# updated_at = models.DateTimeField(default=timezone.now)
+
+	# def __str__(self):
+	# 	return self.name
+	#
+	# class Meta:
+	# 	db_table = 'multi_category'
+	# 	verbose_name = '多级品类分类'
+	# 	verbose_name_plural = verbose_name
+
+
 class Products(models.Model):
 	page = models.IntegerField(verbose_name='页码')
 	num = models.IntegerField(verbose_name='序号')
@@ -38,6 +60,9 @@ class Products(models.Model):
 	created_at = models.DateTimeField(default=timezone.now)
 	updated_at = models.DateTimeField(default=timezone.now)
 	platform_belong = models.CharField(max_length=255, verbose_name='所属电商平台', blank=True, null=True)
+	# multi_category = models.ForeignKey(MultiCategory, on_delete=models.CASCADE,blank=True, null=True, verbose_name='多级品类')
+	category = models.CharField(max_length=255, verbose_name='上级分类', blank=True, null=True)
+
 	def __str__(self):
 		return self.title
 
@@ -47,7 +72,7 @@ class Products(models.Model):
 
 class PriceHistory(models.Model):
 	product = models.ForeignKey(Products,on_delete=models.CASCADE,related_name='price_histories')
-	user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='price_histories')
+	# user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='price_histories')
 	price = models.FloatField(verbose_name='商品价格')
 	recorded_at = models.DateTimeField(auto_now_add=True)	# 记录时间
 
@@ -58,6 +83,7 @@ class PriceHistory(models.Model):
 
 	def __str__(self):
 		return f"{self.product.title} - {self.price} at {self.recorded_at}"
+
 
 class ProductFavorite(models.Model):
 	product = models.ForeignKey(Products,on_delete=models.CASCADE,related_name='favorites')
@@ -71,6 +97,3 @@ class ProductFavorite(models.Model):
 	def __str__(self):
 		return f"{self.user.username} 收藏了 {self.product.title} 于 {self.interested_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
-# class MultiCategory(models.Model):
-# 	product = models.ForeignKey(Products,on_delete=models.CASCADE,related_name='multi_categories')
-# 	c = models.CharField

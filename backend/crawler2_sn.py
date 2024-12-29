@@ -189,6 +189,7 @@ def get_goods(driver,page):
                 'img_url': img_url,
                 'style': style_str,
                 'platform':'苏宁易购',
+                'category':'女装',
             }
             print(product_data)
 
@@ -209,6 +210,7 @@ def get_goods(driver,page):
                 created_at=timezone.now(),  # 获取当前时间
                 updated_at=timezone.now(),
                 platform_belong=product_data['platform'],
+                category=product_data['category'],
             )
             product.save()
             count += 1  # 下一行
