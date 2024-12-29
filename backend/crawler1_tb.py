@@ -316,13 +316,13 @@ def crawler_tb(driver,keyword,pageStart,pageEnd):
         raise
 
 
-# if __name__ == '__main__':
-def crawler1(keyword):
+if __name__ == '__main__':
+# def crawler1(keyword):
     driver = configure_browser()
     try:
         # username = ""  # 替换为你的淘宝账号
         # password = ""  # 替换为你的淘宝密码
-        # keyword = "雪地靴"  # 替换为需要搜索的关键词
+        keyword = "运动鞋"  # 替换为需要搜索的关键词
         page_start=1
         page_end=4
         # 开始爬取数据

@@ -315,7 +315,7 @@ def get_price_history(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
-def send_priceDown_email(request):
+def send_price_email(request):
     try:
         # user_id = request.GET.get('user_id')
 

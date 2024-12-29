@@ -18,7 +18,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Best_Deals.settings')
 # 初始化 Django
 django.setup()
 # 然后导入模型
-from backend.models import Products
+from backend.models import Products, PriceHistory
 from django.utils import timezone
 
 # wait是Selenium中的一个等待类，用于在特定条件满足之前等待一定的时间(这里是15秒)。
@@ -38,8 +38,6 @@ def configure_browser():
     options.add_experimental_option('prefs', prefs)
     # 反爬机制
     options.add_argument('--disable-blink-features=AutomationControlled')
-    # options.add_argument(
-    #     'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36')
 
     # 1.打开浏览器
     driver = webdriver.Chrome(options=options)
@@ -54,20 +52,14 @@ def configure_browser():
 
 def login_sn(driver):
     try:
-        # 2.登陆淘宝
+        # 2.登陆苏宁易购
         login_url = 'https://www.suning.com/'
         driver.get(login_url)
 
-        print("开始登录苏宁易购...")
-        # account = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#fm-login-id')))
-        # account.send_keys(username)
-        # password_in = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#fm-login-password')))
-        # password_in.send_keys(password)
-        # driver.find_element(by=By.CSS_SELECTOR,value='#login-form > div.fm-btn > button').click()
-        input("请输入您的账号密码或扫描二维码登录苏宁易购……完成后点击“ENTER”键")
-
-        # time.sleep(30)  # 过滑块
-        print("登录苏宁易购成功！")
+        print("进入苏宁易购，免登录...")
+        # print("开始登录苏宁易购...")
+        # input("请输入您的账号密码或扫描二维码登录苏宁易购……完成后点击“ENTER”键")
+        # print("登录苏宁易购成功！")
     except Exception as e:
         print("登录苏宁易购时出错：",e)
         driver.quit()
@@ -104,15 +96,17 @@ def extract_price(price_str):
 # 获取商品信息
 def get_goods(driver,page):
     try:
+        # 滑动到页面底端
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        # 滑动到底部后停留3s
+        time.sleep(3)
+        driver.execute_script("window.scrollTo(document.body.scrollHeight,0);")
+
         # 滑动加载
         last_height = driver.execute_script("return document.body.scrollHeight")
-        while True:
-            driver.execute_script("window.scrollBy(0, 1000);")
-            time.sleep(2)
-            new_height = driver.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
-                break
-            last_height = new_height
+        last_height = last_height - 1500
+        driver.execute_script(f"window.scrollBy(0, {last_height});")
+        time.sleep(2)
 
         # 动态等待所有图片加载完成
         WebDriverWait(driver, 15).until(
@@ -120,7 +114,6 @@ def get_goods(driver,page):
         )
         # 设置计数全局变量
         global count
-        # items = driver.find_element(by=By.CSS_SELECTOR,value='#content_items_wrapper')
         # 获取html网页
         html = driver.page_source
         doc = pq(html)
@@ -135,28 +128,17 @@ def get_goods(driver,page):
             price = extract_price(price_str)
             if not price:
                 price = 0.0
-            # price_float = item.find('.priceFloat--XpixvyQ1').text()
-            # if price_int and price_float:
-            #     price = float(f"{price_int}{price_float}")
-            # else:
-            #     price = 0.0
             # 定位交易量
             deal = item.find('.info-evaluate').text()
-            # 定位所在地信息
-            # location = item.find('.procity--wlcT2xH9 span').text()
             # 定位店名
             shop = item.find('.store-stock').text()
-            # 定位包邮的位置
-            # postText = item.find('.subIconWrapper--Vl8zAdQn').text()
-            # postText = "包邮" if "包邮" in postText else "/"
             # 定位商品url
             t_url = item.find('.sellPoint')
             t_url = t_url.attr('href')
-            # t_url = item.attr('a.doubleCardWrapperAdapt--mEcC7olq href')
             # 定位店名url
             shop_url = item.find('.store-stock a')
             shop_url = shop_url.attr('href')
-            if not shop_url:
+            if not shop_url or shop_url == "javascript:void(0);":
                 shop_url = "https://www.suning.com"
             # 定位商品图片url
             img = item.find('.img-block a img')
@@ -167,12 +149,6 @@ def get_goods(driver,page):
 
             # 定位风格
             style_str = item.find('.info-config em').text()
-            # style = []
-            # for s in style_list:
-            #     s_span = s('div.descBox--RunOO4S3 > span').text()
-            #     if s_span != '':
-            #         style.append(s_span)
-            # style_str = '，'.join(style)
 
             # 构建商品信息字典
             product_data = {
@@ -189,35 +165,69 @@ def get_goods(driver,page):
                 'img_url': img_url,
                 'style': style_str,
                 'platform':'苏宁易购',
-                'category':'女装',
+                'category':'数码',
             }
             print(product_data)
 
-            # 商品数据写入数据库
-            product = Products(
-                page=product_data['Page'],
-                num=product_data['Num'],
-                title=product_data['title'],
-                price=product_data['price'],
-                deal=product_data['deal'],
-                location=product_data['location'],
-                shop=product_data['shop'],
-                is_post_free=product_data['isPostFree'],
-                title_url=product_data['url'],
-                shop_url=product_data['shop_url'],
-                img_url=product_data['img_url'],
-                style=product_data['style'],
-                created_at=timezone.now(),  # 获取当前时间
-                updated_at=timezone.now(),
-                platform_belong=product_data['platform'],
-                category=product_data['category'],
-            )
-            product.save()
+            # 检查数据库中是否已经存在相同的商品
+            existing_product = Products.objects.filter(title=product_data['title']).first()
+
+            if existing_product:
+                # 更新已有商品信息
+                existing_product.price = product_data['price']
+                existing_product.deal = product_data['deal']
+                existing_product.location = product_data['location']
+                existing_product.shop = product_data['shop']
+                existing_product.is_post_free = product_data['isPostFree']
+                existing_product.title_url = product_data['url']
+                existing_product.shop_url = product_data['shop_url']
+                existing_product.img_url = product_data['img_url']
+                existing_product.style = product_data['style']
+                existing_product.updated_at = timezone.now()
+                existing_product.save()
+
+                # 添加价格记录
+                PriceHistory.objects.create(
+                    product=existing_product,
+                    price=product_data['price'],
+                    recorded_at=timezone.now()
+                )
+            else:
+                # 商品数据写入数据库
+                new_product = Products(
+                    page=product_data['Page'],
+                    num=product_data['Num'],
+                    title=product_data['title'],
+                    price=product_data['price'],
+                    deal=product_data['deal'],
+                    location=product_data['location'],
+                    shop=product_data['shop'],
+                    is_post_free=product_data['isPostFree'],
+                    title_url=product_data['url'],
+                    shop_url=product_data['shop_url'],
+                    img_url=product_data['img_url'],
+                    style=product_data['style'],
+                    created_at=timezone.now(),  # 获取当前时间
+                    updated_at=timezone.now(),
+                    platform_belong=product_data['platform'],
+                    category=product_data['category'],
+                )
+                new_product.save()
+
+                # 添加价格记录
+                PriceHistory.objects.create(
+                    product=new_product,
+                    price=price,
+                    recorded_at=timezone.now()
+                )
+
             count += 1  # 下一行
     except Exception as e:
         print("get_goods函数错误！获取商品信息时出错：",e)
         raise
 
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 # 翻页至第pageStart页
 def turn_pageStart(driver,pageStart):
     try:
@@ -226,20 +236,25 @@ def turn_pageStart(driver,pageStart):
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         # 滑动到底部后停留3s
         time.sleep(3)
+        driver.execute_script("window.scrollTo(document.body.scrollHeight,0);")
+
+        # 滑动加载
+        last_height = driver.execute_script("return document.body.scrollHeight")
+        last_height = last_height - 1500
+        driver.execute_script(f"window.scrollBy(0, { last_height });")
+        time.sleep(2)
         # 找到输入“页面”的表单，输入“起始页”
         pageInput = wait.until(EC.presence_of_element_located(
             (By.XPATH,'//*[@id="bottomPage"]')))
-        #             (By.CSS_SELECTOR,
-        #          '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > span.next-input.next-medium.next-pagination-jump-input'))
-        # )
         pageInput.send_keys(pageStart)
+
         # 找到页面跳转的“确定”按钮，并且点击
-        ensure_btn = wait.until(EC.element_to_be_clickable(
-            (By.XPATH,'//*[@id="bottom_pager"]/div/a[7]')))
-        #             (By.CSS_SELECTOR,
-        #              '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > button.next-btn.next-medium.next-btn-normal.next-pagination-jump-go'))
-        # )
-        ensure_btn.click()
+        ensure_btn = driver.find_element(By.CSS_SELECTOR, '#bottom_pager > div > a.page-more.ensure')
+        # 修改属性
+        driver.execute_script("arguments[0].removeAttribute('aria-hidden');", ensure_btn)
+        driver.execute_script("arguments[0].setAttribute('tabindex', '0');", ensure_btn)
+        driver.execute_script("arguments[0].click();", ensure_btn)  # 确保按钮在视图中
+
         print("已翻至:第{}页".format(pageStart))
     except Exception as e:
         print("turn_pageStart函数错误！: ",e)
@@ -255,21 +270,19 @@ def page_turning(driver,page_number):
         # 强制等待3秒后翻页
         time.sleep(3)
         # 找到“下一页”的按钮
-        # next_button = wait.until(EC.element_to_be_clickable(
-        #     (By.XPATH, '//*[@id="nextPage"]')))
-        # next_button.click()
-        next_page = driver.find_element(By.ID, "nextPage")
-        driver.execute_script("arguments[0].scrollIntoView(true);", next_page)
-        next_page.click()
+        next_button = wait.until(EC.element_to_be_clickable(
+            (By.XPATH, '//*[@id="nextPage"]')))
+        next_button.click()
+        # next_page = driver.find_element(By.ID, "nextPage")
+        # driver.execute_script("arguments[0].click();", next_page)
+        # next_page.click()
 
         # 判断页数是否相等
         wait.until(EC.text_to_be_present_in_element(
-            (By.CSS_SELECTOR,'#second-filter > div > div.sort > span.cur'), str(page_number)))
-            # (By.CSS_SELECTOR, '#search-content-leftWrap > div.leftContent--BdYLMbH8 > div.pgWrap--RTFKoWa6 > div > div > span.next-pagination-display'), str(page_number)))
+            (By.CSS_SELECTOR,'#bottom_pager > div > a.cur'), str(page_number)))
         print("已翻至: 第{}页".format(page_number))
     except TimeoutException:
         print(f"页面加载超时，第{page_number}页未能正确加载。")
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
 
         get_goods(driver,page_number)
         page_turning(driver,page_number)
@@ -296,15 +309,13 @@ def crawler_sn(driver,keyword,pageStart,pageEnd):
         raise
 
 
-# if __name__ == '__main__':
-def crawler2(keyword):
+if __name__ == '__main__':
+# def crawler2(keyword):
     driver = configure_browser()
     try:
-        # username = ""  # 替换为你的淘宝账号
-        # password = ""  # 替换为你的淘宝密码
-        keyword = "空调"  # 替换为需要搜索的关键词
-        page_start=1
-        page_end=5
+        keyword = "羽绒服"  # 替换为需要搜索的关键词
+        page_start=2
+        page_end=3
         # 开始爬取数据
         login_sn(driver)
         crawler_sn(driver, keyword, page_start, page_end)
