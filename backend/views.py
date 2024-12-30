@@ -2,6 +2,7 @@ from sqlite3 import IntegrityError
 from sys import platform
 
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -72,6 +73,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework import status
 
 
+# @login_required
 @csrf_exempt
 def search_products(request):
         try:
@@ -189,7 +191,6 @@ def toggle_favorite(request):
 
         if created:
             # 如果已收藏，则取消收藏
-
             is_favorite = True
         else:
             favorite.delete()
