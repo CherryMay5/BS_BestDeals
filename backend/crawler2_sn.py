@@ -165,7 +165,7 @@ def get_goods(driver,page):
                 'img_url': img_url,
                 'style': style_str,
                 'platform':'苏宁易购',
-                'category':'其他',
+                'category':'家电',
             }
             print(product_data)
 
@@ -313,8 +313,8 @@ def crawler_sn(driver,keyword,pageStart,pageEnd):
 def crawler2(keyword):
     driver = configure_browser()
     try:
-        # keyword = ""  # 替换为需要搜索的关键词
-        page_start=2
+        # keyword = "扫地机"  # 替换为需要搜索的关键词
+        page_start=1
         page_end=3
         # 开始爬取数据
         login_sn(driver)

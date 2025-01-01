@@ -177,7 +177,7 @@ def get_goods(driver,page):
                 'img_url': img_url,
                 'style': style_str,
                 'platform':'淘宝',
-                'category':'其他',
+                'category':'服装',
             }
             print(product_data)
 
@@ -322,7 +322,7 @@ def crawler1(keyword):
     try:
         # username = ""  # 替换为你的淘宝账号
         # password = ""  # 替换为你的淘宝密码
-        # keyword = ""  # 替换为需要搜索的关键词
+        # keyword = "卫衣"  # 替换为需要搜索的关键词
         page_start=1
         page_end=6
         # 开始爬取数据

@@ -188,7 +188,6 @@ def toggle_favorite(request):
             user=user_choose,
             product=product_choose
         )
-
         if created:
             # 如果已收藏，则取消收藏
             is_favorite = True
@@ -351,6 +350,8 @@ def send_verify_email(request):
         des_email = request.GET.get('des_email')
         if not des_email:
             return JsonResponse({'error': '邮箱地址不能为空'}, status=400)
+        if User.objects.filter(email=des_email).exists():
+            return JsonResponse({'error': '邮箱已存在,请重新输入'}, status=400)
 
         code = generate_verification_code()
         content = f"您的验证码是： {code}   修改后的邮箱为：{des_email}"
@@ -411,27 +412,3 @@ def get_price_history(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
-@csrf_exempt
-def send_price_email(user_id,product_id):
-    try:
-        product = get_object_or_404(Products, id=product_id)
-        product_title = product.title
-
-        user = get_object_or_404(User, id=user_id)
-        des_email = user.email
-
-        content = f'你关注的商品“{product_title}”降价啦！快来看看吧~'
-        res = send_mail('降价提醒！',
-                         content,
-                         settings.DEFAULT_FROM_EMAIL,
-                         [des_email])
-        data = {
-            'send_content':content
-        }
-        if res == 1:
-            return 1
-        else:
-            return 0
-    except Exception as e:
-        print("error：",str(e))
-        return 0
