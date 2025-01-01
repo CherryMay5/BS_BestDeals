@@ -108,10 +108,10 @@ def search_products(request):
                 if select_platform == "淘宝":
                     crawler1(search_input)
                 elif select_platform == "苏宁易购" :
-                    crawler1(search_input)
+                    crawler2(search_input)
                 else:
                     crawler1(search_input)
-                    crawler1(search_input)
+                    crawler2(search_input)
                 # 爬虫获取完数据后重新搜索
                 search_products(search_input)
 
